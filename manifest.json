@@ -1,0 +1,10 @@
+{
+    "name": "UltimaValheimCore",
+    "version_number": "1.0.0",
+    "website_url": "https://github.com/andrewhix/UOV",
+    "description": "Core + Sidecar architecture for modular Valheim mods. Inspired by Ultima Online, provides event system, networking, persistence, and configuration management.",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.2202",
+        "ValheimModding-Jotunn-2.20.1"
+    ]
+}

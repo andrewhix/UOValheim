@@ -1,0 +1,75 @@
+<Project>
+	<PropertyGroup>
+		<!-- Shared configuration -->
+		<TargetFramework>net48</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<Nullable>enable</Nullable>
+
+		<!-- Define Valheim install path once -->
+		<VALHEIM_INSTALL Condition="'$(VALHEIM_INSTALL)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Valheim</VALHEIM_INSTALL>
+
+		<!-- Shared output folder for all modules -->
+		<OutputPath>$(MSBuildThisFileDirectory)Builds\</OutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- BepInEx Core -->
+		<Reference Include="BepInEx">
+			<HintPath>$(VALHEIM_INSTALL)\BepInEx\core\BepInEx.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+
+		<!-- Jotunn Modding Library -->
+		<Reference Include="Jotunn">
+			<HintPath>$(VALHEIM_INSTALL)\BepInEx\plugins\Jotunn.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+
+		<!-- Valheim assemblies -->
+		<Reference Include="assembly_valheim">
+			<HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\assembly_valheim.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		
+		<Reference Include="0Harmony">
+			<HintPath>$(VALHEIM_INSTALL)\BepInEx\core\0Harmony.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		
+		<Reference Include="assembly_utils">
+			<HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\assembly_utils.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		
+		<Reference Include="Assembly-CSharp">
+			<HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\Assembly-CSharp.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+
+		<!-- Unity Assemblies -->
+		<Reference Include="UnityEngine">
+			<HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\UnityEngine.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		
+		<Reference Include="UnityEngine.CoreModule">
+			<HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		
+		<Reference Include="UnityEngine.PhysicsModule">
+			<HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		
+		<Reference Include="UnityEngine.UI">
+			<HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\UnityEngine.UI.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Shared NuGet packages -->
+		<PackageReference Include="System.Text.Json" Version="8.0.4" />
+	</ItemGroup>
+</Project>
