@@ -16,7 +16,7 @@ namespace UltimaValheim.Core
         /// <summary>
         /// Version of this module
         /// </summary>
-        Version ModuleVersion { get; }
+        System.Version ModuleVersion { get; }
 
         /// <summary>
         /// Called when the Core API is ready and all managers are initialized.

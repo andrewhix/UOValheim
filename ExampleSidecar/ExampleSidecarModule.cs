@@ -11,7 +11,10 @@ namespace UltimaValheim.Example
     public class ExampleSidecarModule : ICoreModule
     {
         public string ModuleID => "UltimaValheim.Example";
-        public Version ModuleVersion => new Version(1, 0, 0);
+        public System.Version ModuleVersion
+        {
+            get { return new System.Version(1, 0, 0, 0); }
+        }
 
         private readonly Dictionary<long, DateTime> _playerLoginTimes = new Dictionary<long, DateTime>();
         private BepInEx.Configuration.ConfigEntry<bool> _enableLogging;
@@ -37,8 +40,8 @@ namespace UltimaValheim.Example
             );
 
             // 2. Subscribe to Core events
-            CoreAPI.Events.Subscribe<Player>("OnPlayerJoin", HandlePlayerJoinEvent);
-            CoreAPI.Events.Subscribe<Player>("OnPlayerLeave", HandlePlayerLeaveEvent);
+            CoreAPI.Events.Subscribe<Action<Player>>("OnPlayerJoin", HandlePlayerJoinEvent);
+            CoreAPI.Events.Subscribe<Action<Player>>("OnPlayerLeave", HandlePlayerLeaveEvent);
 
             // 3. Register network RPCs (if needed for multiplayer sync)
             CoreAPI.Network.RegisterRPC(ModuleID, "SyncLoginTime", HandleSyncLoginTime);
@@ -126,8 +129,8 @@ namespace UltimaValheim.Example
             _playerLoginTimes.Clear();
 
             // Unsubscribe from events (optional, but good practice)
-            CoreAPI.Events.Unsubscribe<Player>("OnPlayerJoin", HandlePlayerJoinEvent);
-            CoreAPI.Events.Unsubscribe<Player>("OnPlayerLeave", HandlePlayerLeaveEvent);
+            CoreAPI.Events.Unsubscribe<Action<Player>>("OnPlayerJoin", HandlePlayerJoinEvent);
+            CoreAPI.Events.Unsubscribe<Action<Player>>("OnPlayerLeave", HandlePlayerLeaveEvent);
         }
 
         #region Private Methods

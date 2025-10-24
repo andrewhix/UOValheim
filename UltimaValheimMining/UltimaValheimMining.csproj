@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<AssemblyName>UltimaValheimMining</AssemblyName>
+		<Product>Ultima Valheim Mining</Product>
+		<Description>UO-style mining system for Ultima Valheim</Description>
+		<Version>1.0.0</Version>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\UltimaValheimCore\UltimaValheimCore.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="Assets\uomining" />
+	</ItemGroup>
+
+</Project>

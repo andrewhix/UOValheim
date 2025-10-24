@@ -85,8 +85,8 @@ namespace UltimaValheim.Core
         {
             Logger.LogInfo($"[{PluginName}] Shutting down...");
             
-            // Notify all modules of shutdown
-            CoreAPI.Router.TriggerOnShutdown();
+            // Notify all modules of shutdown (static method)
+            CoreEventRouter.TriggerOnShutdown();
         }
     }
 }

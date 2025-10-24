@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
+using Newtonsoft.Json;
 
 namespace UltimaValheim.Core
 {
@@ -20,7 +20,7 @@ namespace UltimaValheim.Core
         {
             // Use BepInEx config path for saves
             _saveFolder = Path.Combine(BepInEx.Paths.ConfigPath, "UltimaValheim", "Saves");
-            
+
             if (!Directory.Exists(_saveFolder))
             {
                 Directory.CreateDirectory(_saveFolder);
@@ -174,12 +174,12 @@ namespace UltimaValheim.Core
 
                 // Save player data
                 string playerDataPath = Path.Combine(_saveFolder, $"{worldName}_players.json");
-                string playerJson = JsonSerializer.Serialize(_playerData, new JsonSerializerOptions { WriteIndented = true });
+                string playerJson = JsonConvert.SerializeObject(_playerData, Newtonsoft.Json.Formatting.Indented);
                 File.WriteAllText(playerDataPath, playerJson);
 
                 // Save world data
                 string worldDataPath = Path.Combine(_saveFolder, $"{worldName}_world.json");
-                string worldJson = JsonSerializer.Serialize(_worldData, new JsonSerializerOptions { WriteIndented = true });
+                string worldJson = JsonConvert.SerializeObject(_worldData, Newtonsoft.Json.Formatting.Indented);
                 File.WriteAllText(worldDataPath, worldJson);
 
                 CoreAPI.Log.LogInfo($"[PersistenceManager] Saved data to disk for world '{worldName}'");
@@ -209,7 +209,7 @@ namespace UltimaValheim.Core
                 if (File.Exists(playerDataPath))
                 {
                     string playerJson = File.ReadAllText(playerDataPath);
-                    var loaded = JsonSerializer.Deserialize<Dictionary<string, Dictionary<long, object>>>(playerJson);
+                    var loaded = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<long, object>>>(playerJson);
                     if (loaded != null)
                     {
                         _playerData.Clear();
@@ -225,7 +225,7 @@ namespace UltimaValheim.Core
                 if (File.Exists(worldDataPath))
                 {
                     string worldJson = File.ReadAllText(worldDataPath);
-                    var loaded = JsonSerializer.Deserialize<Dictionary<string, object>>(worldJson);
+                    var loaded = JsonConvert.DeserializeObject<Dictionary<string, object>>(worldJson);
                     if (loaded != null)
                     {
                         _worldData.Clear();

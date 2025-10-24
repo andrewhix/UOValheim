@@ -9,13 +9,14 @@ namespace UltimaValheim.Core
     /// </summary>
     public class NetworkManager
     {
-        private readonly Dictionary<string, Action<ZRpc, ZPackage>> _registeredRPCs = new Dictionary<string, Action<ZRpc, ZPackage>>();
+        // Store handlers in Valheim's native format (long peer ID, not ZRpc)
+        private readonly Dictionary<string, Action<long, ZPackage>> _registeredRPCs = new Dictionary<string, Action<long, ZPackage>>();
         private bool _isServerInitialized = false;
 
         public NetworkManager()
         {
-            // Hook into ZNet to detect server initialization
-            ZNet.m_onNewConnection += OnNewConnection;
+            // Network initialization will happen when Core is ready
+            CoreAPI.Log?.LogInfo("[NetworkManager] Initialized.");
         }
 
         /// <summary>
@@ -41,12 +42,27 @@ namespace UltimaValheim.Core
                 return;
             }
 
-            _registeredRPCs[fullName] = handler;
+            // Wrap the user's handler (which expects ZRpc) to work with Valheim's API (which provides long peer ID)
+            Action<long, ZPackage> wrappedHandler = (senderPeerID, package) =>
+            {
+                // Convert peer ID to ZRpc for the module's handler
+                ZNetPeer peer = ZNet.instance?.GetPeer(senderPeerID);
+                if (peer != null && peer.m_rpc != null)
+                {
+                    handler.Invoke(peer.m_rpc, package);
+                }
+                else
+                {
+                    CoreAPI.Log.LogWarning($"[NetworkManager] Could not get ZRpc for peer {senderPeerID} in RPC '{fullName}'");
+                }
+            };
+
+            _registeredRPCs[fullName] = wrappedHandler;
 
             // If server is already running, register immediately
             if (_isServerInitialized && ZRoutedRpc.instance != null)
             {
-                RegisterWithZNet(fullName, handler);
+                RegisterWithZNet(fullName, wrappedHandler);
             }
 
             CoreAPI.Log.LogInfo($"[NetworkManager] Registered RPC: {fullName}");
@@ -64,7 +80,7 @@ namespace UltimaValheim.Core
             }
 
             string fullName = GetNamespacedRPCName(moduleID, rpcName);
-            
+
             if (ZRoutedRpc.instance != null)
             {
                 ZRoutedRpc.instance.InvokeRoutedRPC(peer.m_uid, fullName, package);
@@ -120,7 +136,7 @@ namespace UltimaValheim.Core
             if (ZNet.instance == null || !ZNet.instance.IsServer())
             {
                 string fullName = GetNamespacedRPCName(moduleID, rpcName);
-                
+
                 if (ZRoutedRpc.instance != null)
                 {
                     ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), fullName, package);
@@ -150,7 +166,7 @@ namespace UltimaValheim.Core
         /// </summary>
         public bool IsConnected()
         {
-            return ZNet.instance != null && ZNet.instance.IsConnected();
+            return ZNet.instance != null && ZNet.instance.IsServer() || (ZNet.instance != null && ZNet.instance.GetPeer(ZRoutedRpc.Everybody) != null);
         }
 
         #region Internal Methods
@@ -160,7 +176,7 @@ namespace UltimaValheim.Core
             return $"{moduleID}.{rpcName}";
         }
 
-        private void RegisterWithZNet(string fullRPCName, Action<ZRpc, ZPackage> handler)
+        private void RegisterWithZNet(string fullRPCName, Action<long, ZPackage> handler)
         {
             if (ZRoutedRpc.instance == null)
             {
@@ -170,7 +186,9 @@ namespace UltimaValheim.Core
 
             try
             {
-                ZRoutedRpc.instance.Register(fullRPCName, handler);
+                // Register with Valheim's native signature - handler is already wrapped
+                ZRoutedRpc.instance.Register<ZPackage>(fullRPCName, handler);
+
                 CoreAPI.Log.LogDebug($"[NetworkManager] Registered RPC with ZNet: {fullRPCName}");
             }
             catch (Exception ex)
@@ -179,19 +197,26 @@ namespace UltimaValheim.Core
             }
         }
 
-        private void OnNewConnection(ZNetPeer peer)
+        /// <summary>
+        /// Initialize network system when Valheim's network is ready.
+        /// Called by Core when ZNet is available.
+        /// </summary>
+        internal void InitializeNetwork()
         {
-            if (!_isServerInitialized && ZRoutedRpc.instance != null)
+            if (_isServerInitialized)
+                return;
+
+            if (ZRoutedRpc.instance != null)
             {
                 _isServerInitialized = true;
-                
+
                 // Register all pending RPCs with ZNet
                 foreach (var kvp in _registeredRPCs)
                 {
                     RegisterWithZNet(kvp.Key, kvp.Value);
                 }
 
-                CoreAPI.Log.LogInfo($"[NetworkManager] Server initialized, registered {_registeredRPCs.Count} RPC(s)");
+                CoreAPI.Log.LogInfo($"[NetworkManager] Network initialized, registered {_registeredRPCs.Count} RPC(s)");
             }
         }
 

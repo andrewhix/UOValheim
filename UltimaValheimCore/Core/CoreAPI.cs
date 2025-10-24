@@ -40,6 +40,11 @@ namespace UltimaValheim.Core
         public static ConfigManager Config { get; private set; }
 
         /// <summary>
+        /// Player data manager for ServerCharacters integration
+        /// </summary>
+        public static PlayerDataManager PlayerData { get; private set; }
+
+        /// <summary>
         /// Whether the Core systems have been fully initialized
         /// </summary>
         public static bool IsReady { get; private set; }
@@ -56,13 +61,14 @@ namespace UltimaValheim.Core
             }
 
             Log = log;
-            
+
             // Initialize all managers in dependency order
             Config = new ConfigManager();
             Events = new EventBus();
             Router = new CoreEventRouter();
             Network = new NetworkManager();
             Persistence = new PersistenceManager();
+            PlayerData = new PlayerDataManager();
 
             Log.LogInfo("[CoreAPI] All core systems initialized.");
 
@@ -70,6 +76,12 @@ namespace UltimaValheim.Core
 
             // Notify all registered modules that Core is ready
             CoreLifecycle.NotifyCoreReady();
+
+            // Initialize network system when ZNet is available
+            if (ZNet.instance != null && ZRoutedRpc.instance != null)
+            {
+                Network.InitializeNetwork();
+            }
         }
 
         /// <summary>
