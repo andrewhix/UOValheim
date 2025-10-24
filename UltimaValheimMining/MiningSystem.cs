@@ -14,8 +14,13 @@ namespace UltimaValheim.Mining
     {
         private readonly Dictionary<string, OreDefinition> _oreTable = new Dictionary<string, OreDefinition>();
         private readonly Dictionary<long, float> _lastMineAttempt = new Dictionary<long, float>();
+        private readonly Dictionary<int, OreDefinition[]> _oreBrackets = new Dictionary<int, OreDefinition[]>();
         private const float MINE_COOLDOWN = 1f; // 1 second cooldown between ore checks
-        private readonly System.Random _rng = new System.Random();
+
+        // ThreadStatic RNG for better performance and thread safety
+        [System.ThreadStatic]
+        private static System.Random _localRng;
+        private static System.Random RNG => _localRng ?? (_localRng = new System.Random(Environment.TickCount ^ System.Threading.Thread.CurrentThread.ManagedThreadId));
 
         public MiningSystem()
         {
@@ -30,16 +35,17 @@ namespace UltimaValheim.Mining
         private void InitializeOreTable()
         {
             // Data from: Valehim_to_UO_Server_-_Ores_materials.csv
-            AddOre("UOiron_ore", "Iron Ore", 0f, 80f, 2, "UOminerock_iron", "Iron Ingot");
-            AddOre("UOshadow_ore", "Shadow Ore", 30f, 70f, 2, "UOminerock_shadow", "Shadow Ingot");
-            AddOre("UOgold_ore", "Gold Ore", 40f, 60f, 2, "UOminerock_gold", "Gold Ingot");
-            AddOre("UOagapite_ore", "Agapite Ore", 50f, 50f, 2, "UOminerock_agapite", "Agapite Ingot");
-            AddOre("UOverite_ore", "Verite Ore", 60f, 40f, 1, "UOminerock_verite", "Verite Ingot");
-            AddOre("UOsnow_ore", "Snow Ore", 70f, 35f, 1, "UOminerock_valorite", "Valorite Ingot");
-            AddOre("UOice_ore", "Ice Ore", 75f, 35f, 1, "UOminerock_bloodrock", "Blackrock Ingot");
-            AddOre("UObloodrock_ore", "Bloodrock Ore", 90f, 20f, 1, "UOminerock_ice", "Ice Ingot");
-            AddOre("UOvalorite_ore", "Valorite Ore", 95f, 20f, 1, "UOminerock_snow", "Snow Ingot");
-            AddOre("UOblackrock_ore", "Blackrock Ore", 95f, 20f, 1, "UOminerock_blackrock", "Blackrock Ingot");
+            // NOTE: Using vanilla IronOre instead of custom UOiron_ore
+            AddOre("IronOre", "Iron Ore", 0f, 80f, 2, null, "Iron");
+            AddOre("UOshadow_ore", "Shadow Ore", 30f, 70f, 2, "UOminerock_shadow", "UOshadow_ingot");
+            AddOre("UOgold_ore", "Gold Ore", 40f, 60f, 2, "UOminerock_gold", "UOgold_ingot");
+            AddOre("UOagapite_ore", "Agapite Ore", 50f, 50f, 2, "UOminerock_agapite", "UOagapite_ingot");
+            AddOre("UOverite_ore", "Verite Ore", 60f, 40f, 1, "UOminerock_verite", "UOverite_ingot");
+            AddOre("UOsnow_ore", "Snow Ore", 70f, 35f, 1, "UOminerock_valorite", "UOsnow_ingot");
+            AddOre("UOice_ore", "Ice Ore", 75f, 35f, 1, "UOminerock_bloodrock", "UOice_ingot");
+            AddOre("UObloodrock_ore", "Bloodrock Ore", 90f, 20f, 1, "UOminerock_ice", "UObloodrock_ingot");
+            AddOre("UOvalorite_ore", "Valorite Ore", 95f, 20f, 1, "UOminerock_snow", "UOvalorite_ingot");
+            AddOre("UOblackrock_ore", "Blackrock Ore", 95f, 20f, 1, "UOminerock_blackrock", "UOblackrock_ingot");
         }
 
         private void AddOre(string oreID, string displayName, float skillReq, float chance, int dropAmount, string rockPrefab, string smeltsInto)
@@ -54,6 +60,46 @@ namespace UltimaValheim.Mining
                 RockPrefab = rockPrefab,
                 SmeltsInto = smeltsInto
             };
+        }
+
+        /// <summary>
+        /// Precompute weighted ore brackets for fast selection.
+        /// Called once during initialization to eliminate runtime LINQ allocations.
+        /// </summary>
+        public void PrecomputeOreBrackets()
+        {
+            for (int skill = 0; skill <= 100; skill += 10)
+            {
+                var eligible = new List<OreDefinition>();
+                foreach (var ore in _oreTable.Values)
+                {
+                    if (skill >= ore.SkillRequired)
+                    {
+                        eligible.Add(ore);
+                    }
+                }
+
+                if (eligible.Count == 0)
+                {
+                    _oreBrackets[skill] = new OreDefinition[0];
+                    continue;
+                }
+
+                // Build weighted array
+                var weighted = new List<OreDefinition>();
+                foreach (var ore in eligible)
+                {
+                    int weight = Mathf.RoundToInt(ore.SelectionWeight);
+                    for (int i = 0; i < weight; i++)
+                    {
+                        weighted.Add(ore);
+                    }
+                }
+
+                _oreBrackets[skill] = weighted.ToArray();
+            }
+
+            CoreAPI.Log.LogInfo($"[MiningSystem] Precomputed {_oreBrackets.Count} ore brackets for fast selection.");
         }
 
         /// <summary>
@@ -113,43 +159,25 @@ namespace UltimaValheim.Mining
         {
             // Hardcoded for now - will be replaced with:
             // return CoreAPI.PlayerData.GetFloat(player, "Mining_Skill", 0f);
-            
+
             // For testing: Return a skill value from player data (defaults to 50)
             return CoreAPI.PlayerData.GetFloat(player, "Mining_Skill", 50f);
         }
 
         /// <summary>
         /// Select which ore the player gets based on their skill level.
-        /// Uses weighted random selection from eligible ores.
+        /// Uses precomputed weighted brackets for O(1) selection.
         /// </summary>
         private OreDefinition SelectOreForSkill(float miningSkill)
         {
-            // Get all ores the player has the skill to mine
-            var eligibleOres = _oreTable.Values
-                .Where(ore => miningSkill >= ore.SkillRequired)
-                .ToList();
+            // Round skill to nearest bracket (0, 10, 20, ... 100)
+            int bracket = Mathf.Clamp(Mathf.FloorToInt(miningSkill / 10f) * 10, 0, 100);
 
-            if (eligibleOres.Count == 0)
+            if (!_oreBrackets.TryGetValue(bracket, out var ores) || ores.Length == 0)
                 return null;
 
-            // Calculate total weight
-            float totalWeight = eligibleOres.Sum(ore => ore.SelectionWeight);
-
-            // Weighted random selection (lower skill ores more common)
-            float roll = (float)(_rng.NextDouble() * totalWeight);
-            float cumulative = 0f;
-
-            foreach (var ore in eligibleOres)
-            {
-                cumulative += ore.SelectionWeight;
-                if (roll <= cumulative)
-                {
-                    return ore;
-                }
-            }
-
-            // Fallback (shouldn't happen)
-            return eligibleOres.Last();
+            // Fast O(1) random selection from precomputed weighted array
+            return ores[RNG.Next(ores.Length)];
         }
 
         /// <summary>
@@ -163,7 +191,7 @@ namespace UltimaValheim.Mining
             // TODO: Add skill bonus later if desired
             // successChance += (miningSkill - ore.SkillRequired) * 0.1f;
 
-            float roll = (float)(_rng.NextDouble() * 100f);
+            float roll = (float)(RNG.NextDouble() * 100f);
             return roll <= successChance;
         }
 
@@ -179,24 +207,36 @@ namespace UltimaValheim.Mining
 
             try
             {
+#if DEBUG
                 CoreAPI.Log.LogInfo($"[MiningSystem] Player {player.GetPlayerName()} mined {ore.DropAmount}x {ore.DisplayName}");
+#endif
 
                 // Get the ore prefab from ObjectDB
                 GameObject orePrefab = ObjectDB.instance.GetItemPrefab(ore.OreID);
-                
+
                 if (orePrefab != null)
                 {
-                    // Spawn the ore drops near the player
+                    // Spawn the ore drops near the player with better spread
                     for (int i = 0; i < ore.DropAmount; i++)
                     {
-                        // Spawn with slight random offset so they don't stack on top of each other
-                        Vector3 spawnPos = player.transform.position + Vector3.up * 1.5f + UnityEngine.Random.insideUnitSphere * 0.3f;
+                        // Larger random offset for better spread (prevents stacking)
+                        Vector3 randomOffset = UnityEngine.Random.insideUnitSphere * 0.5f;
+                        randomOffset.y = Mathf.Abs(randomOffset.y) + 1.5f; // Keep drops above ground
+
+                        Vector3 spawnPos = player.transform.position + randomOffset;
                         GameObject drop = UnityEngine.Object.Instantiate(orePrefab, spawnPos, Quaternion.identity);
-                        
-                        // Make sure the drop is networked
+
+                        // Make sure the drop is networked and add physics
                         if (drop.GetComponent<ZNetView>() != null)
                         {
-                            drop.GetComponent<Rigidbody>()?.AddForce(Vector3.up * 4f, ForceMode.VelocityChange);
+                            var rb = drop.GetComponent<Rigidbody>();
+                            if (rb != null)
+                            {
+                                // Add random force for nice spread effect
+                                Vector3 force = UnityEngine.Random.insideUnitSphere * 2f;
+                                force.y = Mathf.Abs(force.y) + 3f;
+                                rb.AddForce(force, ForceMode.VelocityChange);
+                            }
                         }
                     }
 

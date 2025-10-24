@@ -1,7 +1,8 @@
 using System;
-using UnityEngine;
-using UltimaValheim.Core;
+using System.Collections.Generic;
 using HarmonyLib;
+using UltimaValheim.Core;
+using UnityEngine;
 
 namespace UltimaValheim.Mining
 {
@@ -53,6 +54,9 @@ namespace UltimaValheim.Mining
 
             // Initialize mining system
             _miningSystem = new MiningSystem();
+
+            // Precompute ore brackets for fast selection (eliminates LINQ allocations)
+            _miningSystem.PrecomputeOreBrackets();
 
             // Register ore items with Jotunn if asset bundle loaded
             if (_assetBundle != null)
@@ -119,10 +123,9 @@ namespace UltimaValheim.Mining
 
         private void RegisterOres()
         {
-            // Ore list from CSV
+            // Ore list from CSV (excluding iron - using vanilla IronOre)
             string[] ores = new string[]
             {
-                "UOiron_ore",
                 "UOshadow_ore",
                 "UOgold_ore",
                 "UOagapite_ore",
@@ -170,23 +173,26 @@ namespace UltimaValheim.Mining
 
         private void RegisterIngots()
         {
-            // Ingot list - these will need smelting recipes later
-            string[] ingots = new string[]
+            // Ingot list (excluding iron - using vanilla Iron)
+            // Map: ore ID -> ingot ID
+            var oreToIngotMap = new Dictionary<string, string>
             {
-                "UOiron_ingot",
-                "UOshadow_ingot",
-                "UOgold_ingot",
-                "UOagapite_ingot",
-                "UOverite_ingot",
-                "UOsnow_ingot",
-                "UOice_ingot",
-                "UObloodrock_ingot",
-                "UOvalorite_ingot",
-                "UOblackrock_ingot"
+                { "UOshadow_ore", "UOshadow_ingot" },
+                { "UOgold_ore", "UOgold_ingot" },
+                { "UOagapite_ore", "UOagapite_ingot" },
+                { "UOverite_ore", "UOverite_ingot" },
+                { "UOsnow_ore", "UOsnow_ingot" },
+                { "UOice_ore", "UOice_ingot" },
+                { "UObloodrock_ore", "UObloodrock_ingot" },
+                { "UOvalorite_ore", "UOvalorite_ingot" },
+                { "UOblackrock_ore", "UOblackrock_ingot" }
             };
 
-            foreach (string ingotID in ingots)
+            foreach (var kvp in oreToIngotMap)
             {
+                string oreID = kvp.Key;
+                string ingotID = kvp.Value;
+
                 try
                 {
                     var ingotPrefab = _assetBundle.LoadAsset<GameObject>(ingotID);
@@ -201,11 +207,14 @@ namespace UltimaValheim.Mining
                             };
                         }
 
-                        // Create custom item (no recipe yet - will add smelting later)
+                        // Create custom item (no crafting recipe)
                         Jotunn.Entities.CustomItem customIngot = new Jotunn.Entities.CustomItem(ingotPrefab, fixReference: true);
                         Jotunn.Managers.ItemManager.Instance.AddItem(customIngot);
 
-                        CoreAPI.Log.LogInfo($"[{ModuleID}] Registered ingot: {ingotID}");
+                        // Add smelting conversion: ore -> ingot
+                        AddSmeltingRecipe(oreID, ingotID);
+
+                        CoreAPI.Log.LogInfo($"[{ModuleID}] Registered ingot: {ingotID} (smelts from {oreID})");
                     }
                     else
                     {
@@ -216,6 +225,31 @@ namespace UltimaValheim.Mining
                 {
                     CoreAPI.Log.LogError($"[{ModuleID}] Failed to register ingot {ingotID}: {ex}");
                 }
+            }
+        }
+
+        private void AddSmeltingRecipe(string oreID, string ingotID)
+        {
+            try
+            {
+                // Create smelting conversion config
+                var conversionConfig = new Jotunn.Configs.SmelterConversionConfig
+                {
+                    Station = Jotunn.Configs.CookingStations.Smelter,
+                    FromItem = oreID,
+                    ToItem = ingotID,
+                    CookTime = 30f  // 30 seconds to smelt
+                };
+
+                // Create custom item conversion
+                var conversion = new Jotunn.Entities.CustomItemConversion(conversionConfig);
+                Jotunn.Managers.ItemManager.Instance.AddItemConversion(conversion);
+
+                CoreAPI.Log.LogInfo($"[{ModuleID}] Added smelting recipe: {oreID} -> {ingotID}");
+            }
+            catch (Exception ex)
+            {
+                CoreAPI.Log.LogError($"[{ModuleID}] Failed to add smelting recipe {oreID} -> {ingotID}: {ex}");
             }
         }
 
@@ -247,28 +281,33 @@ namespace UltimaValheim.Mining
         {
             try
             {
+                // Early bailout for performance - fast path filtering
+                if (__instance == null || hit == null || hit.GetAttacker() == null)
+                    return;
+
                 // Only process on server
                 if (!ZNet.instance.IsServer())
                     return;
 
+                // Cast to player early
+                if (!(hit.GetAttacker() is Player player))
+                    return;
+
+                // Check if player is using a pickaxe BEFORE any other checks
+                var weapon = player.GetCurrentWeapon();
+                if (weapon == null || weapon.m_shared == null || string.IsNullOrEmpty(weapon.m_shared.m_name))
+                    return;
+
+                string weaponName = weapon.m_shared.m_name.ToLower();
+                if (!weaponName.Contains("pickaxe") && !weaponName.Contains("pick"))
+                    return;
+
                 // Only process if it's a rock (MineRock5 or similar)
-                if (__instance == null || __instance.gameObject == null)
+                if (__instance.gameObject == null)
                     return;
 
                 string objectName = __instance.gameObject.name.ToLower();
                 if (!objectName.Contains("rock") && !objectName.Contains("mine"))
-                    return;
-
-                // Get the player who hit the rock
-                if (hit == null || hit.GetAttacker() == null)
-                    return;
-
-                Player player = hit.GetAttacker() as Player;
-                if (player == null)
-                    return;
-
-                // Check if player is using a pickaxe
-                if (!IsUsingPickaxe(player))
                     return;
 
                 // Get the Mining module instance from Core
@@ -287,6 +326,7 @@ namespace UltimaValheim.Mining
 
         /// <summary>
         /// Check if player is currently using a pickaxe.
+        /// DEPRECATED: Now checked inline in patch for performance.
         /// </summary>
         private static bool IsUsingPickaxe(Player player)
         {
