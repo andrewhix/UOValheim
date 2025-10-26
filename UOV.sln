@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExampleSidecar", "ExampleSi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltimaValheimMining", "UltimaValheimMining\UltimaValheimMining.csproj", "{4400EFCF-19B2-1479-B04B-82EA7173D3AF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltimaValheimSkills", "UltimaValheimSkills\UltimaValheimSkills.csproj", "{93827F2C-5563-F56F-075D-F63F4E97D428}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +28,10 @@ Global
 		{4400EFCF-19B2-1479-B04B-82EA7173D3AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4400EFCF-19B2-1479-B04B-82EA7173D3AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4400EFCF-19B2-1479-B04B-82EA7173D3AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{93827F2C-5563-F56F-075D-F63F4E97D428}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{93827F2C-5563-F56F-075D-F63F4E97D428}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{93827F2C-5563-F56F-075D-F63F4E97D428}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{93827F2C-5563-F56F-075D-F63F4E97D428}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

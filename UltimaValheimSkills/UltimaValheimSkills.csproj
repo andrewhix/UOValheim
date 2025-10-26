@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>UltimaValheimSkills</AssemblyName>
+    <RootNamespace>UltimaValheim.Skills</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <!-- Import shared build properties -->
+  <Import Project="$(SolutionDir)Directory.Build.props" Condition="Exists('$(SolutionDir)Directory.Build.props')" />
+
+  <!-- BepInEx References -->
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" />
+    <PackageReference Include="BepInEx.PluginInfoProps" Version="2.1.0" />
+    <PackageReference Include="UnityEngine.Modules" Version="2022.3.17" />
+  </ItemGroup>
+
+  <!-- Valheim Game References -->
+  <ItemGroup>
+    <Reference Include="assembly_valheim">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\publicized_assemblies\assembly_valheim_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_utils">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\publicized_assemblies\assembly_utils_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Jotunn Reference -->
+  <ItemGroup>
+    <Reference Include="Jotunn">
+      <HintPath>$(VALHEIM_INSTALL)\BepInEx\plugins\Jotunn.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Harmony Reference (via BepInEx) -->
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>$(VALHEIM_INSTALL)\BepInEx\core\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Reference to Core Module -->
+  <ItemGroup>
+    <ProjectReference Include="..\UltimaValheimCore\UltimaValheimCore.csproj" />
+  </ItemGroup>
+
+  <!-- Copy output to Valheim plugins folder after build -->
+  <Target Name="CopyToValheim" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug' And '$(VALHEIM_INSTALL)' != ''">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(VALHEIM_INSTALL)\BepInEx\plugins\UltimaValheim" />
+    <Message Text="Copied $(TargetFileName) to Valheim plugins folder" Importance="high" />
+  </Target>
+
+</Project>
