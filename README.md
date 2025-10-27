@@ -1,13 +1,16 @@
-Ultima Valheim - Core + Sidecar Architecture
+# Ultima Valheim - Core + Sidecar Architecture
+
 A modular, extensible framework for Valheim modding that enables independent, hot-swappable gameplay systems with multiplayer-safe persistence and event-driven communication.
-🎯 Architecture Overview
-Core + Sidecar pattern where:
 
-Core = Central authority providing EventBus, NetworkManager, PersistenceManager, and ConfigManager
-Sidecars = Independent modules (Skills, Magic, Combat, etc.) that communicate through Core APIs only
-Zero direct dependencies between modules - all communication via events
-Hot-swappable modules without affecting other systems
+## 🎯 Architecture Overview
 
+**Core + Sidecar** pattern where:
+- **Core** = Central authority providing EventBus, NetworkManager, PersistenceManager, and ConfigManager
+- **Sidecars** = Independent modules (Skills, Magic, Combat, etc.) that communicate through Core APIs only
+- Zero direct dependencies between modules - all communication via events
+- Hot-swappable modules without affecting other systems
+
+```
 ┌─────────────────────────────┐
 │    UltimaValheimCore        │
 │  ┌───────────────────────┐  │
@@ -23,25 +26,29 @@ Hot-swappable modules without affecting other systems
     │Skills│ │Combat│ │Magic │
     │Module│ │Module│ │Module│
     └──────┘ └──────┘ └──────┘
-✨ Key Features
+```
 
-🔌 Modular Design: Each system is a standalone module - add or remove without breaking others
-🌐 Multiplayer-Safe: Built-in network sync with RPC routing and version checking
-💾 Persistent Data: Automatic save/load for player and world data via JSON
-📡 Event-Driven: Loose coupling via publish/subscribe EventBus
-⚙️ Centralized Config: BepInEx configuration with per-module sections
-🛡️ Error Resilient: Module failures are isolated and don't cascade
+## ✨ Key Features
 
-🚀 Quick Start
-For Users
+- **🔌 Modular Design**: Each system is a standalone module - add or remove without breaking others
+- **🌐 Multiplayer-Safe**: Built-in network sync with RPC routing and version checking
+- **💾 Persistent Data**: Automatic save/load for player and world data via JSON
+- **📡 Event-Driven**: Loose coupling via publish/subscribe EventBus
+- **⚙️ Centralized Config**: BepInEx configuration with per-module sections
+- **🛡️ Error Resilient**: Module failures are isolated and don't cascade
 
-Install BepInEx + Jotunn
-Copy UltimaValheimCore.dll to BepInEx/plugins/
-Add any Sidecar module DLLs
-Launch Valheim
+## 🚀 Quick Start
 
-For Developers
-csharpusing System;
+### For Users
+1. Install BepInEx + Jotunn
+2. Copy `UltimaValheimCore.dll` to `BepInEx/plugins/`
+3. Add any Sidecar module DLLs
+4. Launch Valheim
+
+### For Developers
+
+```csharp
+using System;
 using UltimaValheim.Core;
 
 public class MyModule : ICoreModule
@@ -96,35 +103,44 @@ Skills adds XP → Skills.AddXP(player, "Mining", 5)
 PersistenceManager saves → OnSave() hook
    ↓
 NetworkManager syncs → Client receives updated XP
-🔧 Building from Source
-bash# Prerequisites: .NET 4.8, BepInEx, Jotunn
+```
+
+## 🔧 Building from Source
+
+```bash
+# Prerequisites: .NET 4.8, BepInEx, Jotunn
 git clone https://github.com/yourusername/UltimaValheim.git
 cd UltimaValheim
 dotnet build UltimaValheimCore.sln -c Release
 # Output: Builds/UltimaValheimCore.dll
-📖 Documentation
+```
 
-Getting Started Guide - Tutorial for creating modules
-Architecture Doc - Full technical specification
-Example Module - Reference implementation
-Jotunn Docs - Modding API reference
+## 📖 Documentation
 
-🤝 Contributing
+- **[Getting Started Guide](GETTING_STARTED.md)** - Tutorial for creating modules
+- **[Architecture Doc](UltimaValheim_Core_and_Sidecar_system.md)** - Full technical specification
+- **[Example Module](ExampleSidecar/)** - Reference implementation
+- **[Jotunn Docs](https://valheim-modding.github.io/Jotunn/)** - Modding API reference
+
+## 🤝 Contributing
+
 Contributions welcome! Please:
+- Follow existing code style
+- Document all public APIs
+- Test multiplayer functionality
+- Update docs for new features
 
-Follow existing code style
-Document all public APIs
-Test multiplayer functionality
-Update docs for new features
+## 📄 License
 
-📄 License
 MIT License
-🙏 Credits
 
-Valheim by Iron Gate Studio
-BepInEx modding framework
-Jotunn Valheim mod library
-Ultima Online (design inspiration)
+## 🙏 Credits
 
+- **Valheim** by Iron Gate Studio
+- **BepInEx** modding framework
+- **Jotunn** Valheim mod library
+- **Ultima Online** (design inspiration)
 
-Built for the Valheim modding community ❤️
+---
+
+**Built for the Valheim modding community** ❤️
