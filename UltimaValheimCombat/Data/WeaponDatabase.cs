@@ -28,10 +28,31 @@ namespace UltimaValheim.Combat.Data
 
             try
             {
-                string[] lines = File.ReadAllLines(csvPath);
+                string csvContent = File.ReadAllLines(csvPath).Length > 0 ? File.ReadAllText(csvPath) : "";
+                LoadFromCSVString(csvContent);
+            }
+            catch (Exception ex)
+            {
+                CoreAPI.Log.LogError($"[WeaponDatabase] Failed to load CSV: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// Load weapon data from CSV string
+        /// </summary>
+        public void LoadFromCSVString(string csvContent)
+        {
+            CoreAPI.Log.LogInfo($"[WeaponDatabase] Loading weapons from CSV string...");
+
+            _weaponsByID.Clear();
+            _weaponsByMaterial.Clear();
+
+            try
+            {
+                string[] lines = csvContent.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                 if (lines.Length < 2)
                 {
-                    CoreAPI.Log.LogWarning($"[WeaponDatabase] CSV file is empty or missing header!");
+                    CoreAPI.Log.LogWarning($"[WeaponDatabase] CSV is empty or missing header!");
                     return;
                 }
 
@@ -66,7 +87,7 @@ namespace UltimaValheim.Combat.Data
             }
             catch (Exception ex)
             {
-                CoreAPI.Log.LogError($"[WeaponDatabase] Failed to load CSV: {ex}");
+                CoreAPI.Log.LogError($"[WeaponDatabase] Failed to parse CSV: {ex}");
             }
         }
 

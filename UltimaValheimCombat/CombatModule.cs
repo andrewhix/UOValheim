@@ -55,11 +55,14 @@ namespace UltimaValheim.Combat
                 // Load configuration
                 LoadConfiguration();
 
-                // Load weapon data from CSV
-                LoadWeaponData();
+                // Initialize weapon database (but don't load CSV - stats are hardcoded in WeaponManager)
+                _weaponDatabase = new WeaponDatabase();
 
                 // Initialize systems
                 InitializeSystems();
+
+                // Register weapons with Jotunn
+                _weaponManager.RegisterWeapons();
 
                 // Apply Harmony patches
                 ApplyHarmonyPatches();
@@ -155,37 +158,6 @@ namespace UltimaValheim.Combat
 
         #region Data Loading
 
-        private void LoadWeaponData()
-        {
-            CoreAPI.Log.LogInfo($"[{ModuleID}] Loading weapon data...");
-
-            try
-            {
-                _weaponDatabase = new WeaponDatabase();
-                
-                // Load from CSV in mod folder
-                string csvPath = System.IO.Path.Combine(
-                    BepInEx.Paths.PluginPath,
-                    "UltimaValheim",
-                    "Data",
-                    "Ultima_Valheim_Weapons_Balance.csv"
-                );
-
-                if (!System.IO.File.Exists(csvPath))
-                {
-                    CoreAPI.Log.LogWarning($"[{ModuleID}] Weapon CSV not found at: {csvPath}");
-                    CoreAPI.Log.LogWarning($"[{ModuleID}] Using default weapon data.");
-                    return;
-                }
-
-                _weaponDatabase.LoadFromCSV(csvPath);
-                CoreAPI.Log.LogInfo($"[{ModuleID}] Loaded {_weaponDatabase.GetWeaponCount()} weapons from CSV.");
-            }
-            catch (Exception ex)
-            {
-                CoreAPI.Log.LogError($"[{ModuleID}] Failed to load weapon data: {ex}");
-            }
-        }
 
         #endregion
 
