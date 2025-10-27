@@ -15,7 +15,7 @@ namespace UltimaValheim.Skills
         private Dictionary<string, float> _skills = new Dictionary<string, float>();
 
         // Default skill value for new skills
-        private const float DEFAULT_SKILL = 50f;
+        private const float DEFAULT_SKILL = 10f;
 
         /// <summary>
         /// Get a skill value. Returns default (50) if skill not yet trained.

@@ -7,6 +7,8 @@ using HarmonyLib;
 
 namespace UltimaValheim.Mining
 {
+    [ModuleDependency("UltimaValheim.Core", MinVersion = "1.0.0")]
+    [ModuleDependency("UltimaValheim.Skills", Soft = true)]
     /// <summary>
     /// Mining module for Ultima Valheim.
     /// Implements UO-style mining system with skill-based ore drops.
@@ -25,7 +27,8 @@ namespace UltimaValheim.Mining
         private AssetBundle _assetBundle;
         private BepInEx.Configuration.ConfigEntry<bool> _enableMiningSystem;
         private BepInEx.Configuration.ConfigEntry<float> _skillGainRate;
-
+        // Track event handlers for proper cleanup
+        private Action<Player, GameObject> _onMiningHitHandler;
         public void OnCoreReady()
         {
             CoreAPI.Log.LogInfo($"[{ModuleID}] Initializing Mining module...");
@@ -441,8 +444,22 @@ namespace UltimaValheim.Mining
         {
             CoreAPI.Log.LogInfo($"[{ModuleID}] Shutting down Mining module...");
 
+            // ENHANCEMENT: Unsubscribe from events (if any were registered)
+            if (_onMiningHitHandler != null)
+            {
+                CoreAPI.Events.Unsubscribe("OnMiningHit", _onMiningHitHandler);
+            }
+
             // Unpatch Harmony
             _harmony?.UnpatchSelf();
+
+            // Unload asset bundle if loaded
+            if (_assetBundle != null)
+            {
+                _assetBundle.Unload(false);
+            }
+
+            CoreAPI.Log.LogInfo($"[{ModuleID}] Mining module shut down cleanly.");
         }
 
         #region Public API (for admin commands/debugging)

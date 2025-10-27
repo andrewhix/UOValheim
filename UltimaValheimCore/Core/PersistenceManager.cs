@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 
 namespace UltimaValheim.Core
@@ -8,6 +9,7 @@ namespace UltimaValheim.Core
     /// <summary>
     /// Manages persistence for module data across saves.
     /// Provides serialization hooks for player-specific and world-specific data.
+    /// ENHANCED: Includes async save/load methods for non-blocking operations.
     /// </summary>
     public class PersistenceManager
     {
@@ -55,6 +57,16 @@ namespace UltimaValheim.Core
         }
 
         /// <summary>
+        /// Asynchronously save player-specific data for a module (non-blocking).
+        /// Use for non-critical saves during gameplay to prevent frame stuttering.
+        /// WARNING: Not suitable for critical saves (player disconnect, shutdown).
+        /// </summary>
+        public async Task SavePlayerDataAsync(string moduleID, long playerID, object data)
+        {
+            await Task.Run(() => SavePlayerData(moduleID, playerID, data));
+        }
+
+        /// <summary>
         /// Load player-specific data for a module.
         /// </summary>
         /// <typeparam name="T">Type of data to load</typeparam>
@@ -80,6 +92,14 @@ namespace UltimaValheim.Core
             }
 
             return default(T);
+        }
+
+        /// <summary>
+        /// Asynchronously load player-specific data for a module (non-blocking).
+        /// </summary>
+        public async Task<T> LoadPlayerDataAsync<T>(string moduleID, long playerID) where T : class
+        {
+            return await Task.Run(() => LoadPlayerData<T>(moduleID, playerID));
         }
 
         /// <summary>
@@ -123,6 +143,14 @@ namespace UltimaValheim.Core
         }
 
         /// <summary>
+        /// Asynchronously save world-specific data for a module (non-blocking).
+        /// </summary>
+        public async Task SaveWorldDataAsync(string moduleID, object data)
+        {
+            await Task.Run(() => SaveWorldData(moduleID, data));
+        }
+
+        /// <summary>
         /// Load world-specific data for a module.
         /// </summary>
         public T LoadWorldData<T>(string moduleID) where T : class
@@ -147,6 +175,14 @@ namespace UltimaValheim.Core
         }
 
         /// <summary>
+        /// Asynchronously load world-specific data for a module (non-blocking).
+        /// </summary>
+        public async Task<T> LoadWorldDataAsync<T>(string moduleID) where T : class
+        {
+            return await Task.Run(() => LoadWorldData<T>(moduleID));
+        }
+
+        /// <summary>
         /// Check if world data exists for a module.
         /// </summary>
         public bool HasWorldData(string moduleID)
@@ -160,6 +196,7 @@ namespace UltimaValheim.Core
 
         /// <summary>
         /// Persist all data to disk.
+        /// CRITICAL: Always use this synchronous version for OnPlayerLeave and OnShutdown!
         /// </summary>
         public void SaveToDisk()
         {
@@ -188,6 +225,16 @@ namespace UltimaValheim.Core
             {
                 CoreAPI.Log.LogError($"[PersistenceManager] Failed to save data to disk: {ex}");
             }
+        }
+
+        /// <summary>
+        /// Asynchronously persist all data to disk (non-blocking).
+        /// Use for periodic autosaves to prevent frame stuttering.
+        /// WARNING: Not suitable for critical saves (player disconnect, shutdown) - use SaveToDisk() instead!
+        /// </summary>
+        public async Task SaveToDiskAsync()
+        {
+            await Task.Run(() => SaveToDisk());
         }
 
         /// <summary>
@@ -242,6 +289,14 @@ namespace UltimaValheim.Core
             {
                 CoreAPI.Log.LogError($"[PersistenceManager] Failed to load data from disk: {ex}");
             }
+        }
+
+        /// <summary>
+        /// Asynchronously load all data from disk (non-blocking).
+        /// </summary>
+        public async Task LoadFromDiskAsync()
+        {
+            await Task.Run(() => LoadFromDisk());
         }
 
         #endregion

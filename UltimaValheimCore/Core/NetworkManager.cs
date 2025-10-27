@@ -6,6 +6,7 @@ namespace UltimaValheim.Core
     /// <summary>
     /// Manages network RPC registration and routing for modules.
     /// Wraps Valheim's ZRoutedRpc system with module namespacing.
+    /// ENHANCED: Includes ZPackage object pooling to reduce GC pressure.
     /// </summary>
     public class NetworkManager
     {
@@ -13,11 +14,70 @@ namespace UltimaValheim.Core
         private readonly Dictionary<string, Action<long, ZPackage>> _registeredRPCs = new Dictionary<string, Action<long, ZPackage>>();
         private bool _isServerInitialized = false;
 
+        // Object pooling for ZPackage to reduce garbage collection
+        private static readonly Queue<ZPackage> _packagePool = new Queue<ZPackage>();
+        private const int MAX_POOL_SIZE = 50; // Limit pool size to prevent unbounded growth
+
         public NetworkManager()
         {
             // Network initialization will happen when Core is ready
-            CoreAPI.Log?.LogInfo("[NetworkManager] Initialized.");
+            CoreAPI.Log?.LogInfo("[NetworkManager] Initialized with object pooling.");
         }
+
+        #region ZPackage Object Pooling
+
+        /// <summary>
+        /// Get a ZPackage from the object pool (or create new if pool is empty).
+        /// ALWAYS return packages using ReturnPackage() when done!
+        /// </summary>
+        public static ZPackage GetPackage()
+        {
+            lock (_packagePool)
+            {
+                if (_packagePool.Count > 0)
+                {
+                    var package = _packagePool.Dequeue();
+                    return package;
+                }
+            }
+
+            return new ZPackage();
+        }
+
+        /// <summary>
+        /// Return a ZPackage to the pool for reuse.
+        /// The package will be cleared before being pooled.
+        /// </summary>
+        public static void ReturnPackage(ZPackage package)
+        {
+            if (package == null)
+                return;
+
+            lock (_packagePool)
+            {
+                // Clear the package for reuse
+                package.Clear();
+
+                // Only pool if we haven't exceeded max size
+                if (_packagePool.Count < MAX_POOL_SIZE)
+                {
+                    _packagePool.Enqueue(package);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get current package pool statistics (for debugging/monitoring).
+        /// </summary>
+        public static (int PoolSize, int MaxSize) GetPoolStats()
+        {
+            lock (_packagePool)
+            {
+                return (_packagePool.Count, MAX_POOL_SIZE);
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Register a named RPC handler for a module.

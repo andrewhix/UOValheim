@@ -39,13 +39,6 @@
 		<PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
 		<PackageReference Include="BepInEx.Core" Version="5.*" />
 		<PackageReference Include="UnityEngine.Modules" Version="2022.3.17" IncludeAssets="compile" />
-		
-		<!-- ENHANCEMENT: Add Newtonsoft.Json reference for all projects -->
-		<!-- Use BepInEx's bundled version at compile time, don't copy to output -->
-		<Reference Include="Newtonsoft.Json" Condition="Exists('$(VALHEIM_INSTALL)\BepInEx\core\Newtonsoft.Json.dll')">
-			<HintPath>$(VALHEIM_INSTALL)\BepInEx\core\Newtonsoft.Json.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">

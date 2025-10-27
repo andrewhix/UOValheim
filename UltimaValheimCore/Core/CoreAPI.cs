@@ -45,6 +45,11 @@ namespace UltimaValheim.Core
         public static PlayerDataManager PlayerData { get; private set; }
 
         /// <summary>
+        /// Skills manager for Valheim skill UI integration
+        /// </summary>
+        public static SkillsManager Skills { get; private set; }
+
+        /// <summary>
         /// Whether the Core systems have been fully initialized
         /// </summary>
         public static bool IsReady { get; private set; }
@@ -69,6 +74,7 @@ namespace UltimaValheim.Core
             Network = new NetworkManager();
             Persistence = new PersistenceManager();
             PlayerData = new PlayerDataManager();
+            Skills = new SkillsManager();
 
             Log.LogInfo("[CoreAPI] All core systems initialized.");
 

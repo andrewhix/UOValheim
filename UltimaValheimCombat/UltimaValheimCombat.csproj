@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<AssemblyName>UltimaValheimCombat</AssemblyName>
+		<Product>Ultima Valheim Combat</Product>
+		<Description>UO-style combat system with performance optimizations for Ultima Valheim</Description>
+		<Version>1.0.0</Version>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\UltimaValheimCore\UltimaValheimCore.csproj" />
+	</ItemGroup>
+
+</Project>

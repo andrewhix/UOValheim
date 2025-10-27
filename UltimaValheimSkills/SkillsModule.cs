@@ -30,8 +30,13 @@ namespace UltimaValheim.Skills
         private Harmony _harmony;
 
         // Skill update constants
-        private const float SKILL_UPDATE_INTERVAL = 0.5f; // Save skills every 0.5 seconds if changed
+        private const float SKILL_UPDATE_INTERVAL = 2.0f; // Save skills every 2 seconds if changed
         private Dictionary<long, float> _lastSkillSaveTime = new Dictionary<long, float>();
+
+        // Track event handlers for proper cleanup
+        private Action<Player, string, int> _onSkillLevelUpHandler;
+        private Action<Player> _onPlayerJoinHandler;
+        private Action _onSaveHandler;
 
         public void OnCoreReady()
         {
@@ -124,12 +129,30 @@ namespace UltimaValheim.Skills
             // Save all player data
             OnSave();
 
-            // Cleanup
+            // ENHANCEMENT: Unsubscribe from all EventBus events
+            if (_onPlayerJoinHandler != null)
+            {
+                CoreAPI.Events.Unsubscribe("OnPlayerJoin", _onPlayerJoinHandler);
+            }
+
+            if (_onSkillLevelUpHandler != null)
+            {
+                CoreAPI.Events.Unsubscribe("OnSkillLevelUp", _onSkillLevelUpHandler);
+            }
+
+            if (_onSaveHandler != null)
+            {
+                CoreAPI.Events.Unsubscribe("OnSave", _onSaveHandler);
+            }
+
+            // Cleanup data structures
             _playerSkills.Clear();
             _lastSkillSaveTime.Clear();
 
             // Unpatch Harmony
             _harmony?.UnpatchSelf();
+
+            CoreAPI.Log.LogInfo($"[{ModuleID}] Skills module shut down cleanly.");
         }
 
         #region Configuration
@@ -212,6 +235,29 @@ namespace UltimaValheim.Skills
             _skillDefinitions.RegisterSkill("Healing", "Heal wounds and cure poison", SkillCategory.Utility);
             _skillDefinitions.RegisterSkill("AnimalLore", "Understand creatures", SkillCategory.Utility);
             _skillDefinitions.RegisterSkill("Camping", "Set up camps and rest", SkillCategory.Utility);
+
+            // Register all skills with Core for Valheim UI integration
+            RegisterSkillsWithCore();
+        }
+
+        /// <summary>
+        /// Register all skills with Core.Skills manager for Valheim UI display.
+        /// </summary>
+        private void RegisterSkillsWithCore()
+        {
+            var allSkills = _skillDefinitions.GetAllSkills();
+
+            foreach (var skillDef in allSkills)
+            {
+                CoreAPI.Skills.RegisterCustomSkill(
+                    skillDef.SkillName,
+                    skillDef.Description,
+                    (player) => GetSkill(player, skillDef.SkillName),
+                    (player, value) => SetSkill(player, skillDef.SkillName, value)
+                );
+            }
+
+            CoreAPI.Log.LogInfo($"[{ModuleID}] Registered {allSkills.Count} skills with Core.Skills for UI display");
         }
 
         #endregion
@@ -235,7 +281,7 @@ namespace UltimaValheim.Skills
         public float GetSkill(long playerID, string skillName)
         {
             if (!_playerSkills.TryGetValue(playerID, out var skillData))
-                return 50f; // Default starting skill
+                return 10f; // Default starting skill
 
             return skillData.GetSkill(skillName);
         }
