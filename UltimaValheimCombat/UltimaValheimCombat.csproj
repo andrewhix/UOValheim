@@ -13,7 +13,6 @@
 
 	<ItemGroup>
 		<EmbeddedResource Include="Assets\uoweapons" />
-		<EmbeddedResource Include="Assets\Ultima_Valheim_Weapons_Balance.csv" />
 	</ItemGroup>
 
 </Project>
